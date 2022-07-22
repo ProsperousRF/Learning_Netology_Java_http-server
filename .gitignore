@@ -1,6 +1,7 @@
 HELP.md
 .gradle
 build/
+*.class
 
 ### STS ###
 .apt_generated
