@@ -1,7 +1,6 @@
+import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Files;
@@ -14,6 +13,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+/**
+ * simple http Server
+ *
+ * @author Stanislav Rakitov
+ * @version 1.2
+ */
 public class Server {
 
   private final int SERVER_SOCKET;
@@ -44,23 +49,11 @@ public class Server {
   }
 
   private void proceedConnection(Socket socket) {
-    try (final var in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-         final var out = new BufferedOutputStream(socket.getOutputStream())) {
+    try (final var in = new BufferedInputStream(socket.getInputStream());
+         final var out = new BufferedOutputStream(socket.getOutputStream())
+    ) {
 
-      // read only request line for simplicity
-      // must be in form GET /path HTTP/1.1
-      final var requestLine = in.readLine();
-      final var parts = requestLine.split(" ");
-
-      if (parts.length != 3) {
-        // just close socket
-        socket.close();
-        return;
-      }
-
-      String method = parts[0];
-      final var path = parts[1];
-      Request request = createRequest(method, path);
+      Request request = Request.createRequest(in);
 
       // Check for bad requests and drop connection
       if (request == null || !handlers.containsKey(request.getMethod())) {
@@ -79,7 +72,7 @@ public class Server {
         if (!validPaths.contains(request.getPath())) {
           responseWithoutContent(out, "404", "Not Found");
         } else {
-          defaultHandler(out, path);
+          defaultHandler(out, request.getPath());
         }
       }
 
@@ -123,16 +116,6 @@ public class Server {
     out.flush();
   }
 
-  private Request createRequest(String method, String path) {
-    // TODO: More checks for bad fields
-    if (method != null && !method.isBlank()) {
-      return new Request(method, path);
-    } else {
-      return null;
-    }
-
-  }
-
   void addHandler(String method, String path, Handler handler) {
     if (!handlers.containsKey(method)) {
       handlers.put(method, new HashMap<>());
@@ -149,6 +132,7 @@ public class Server {
               ).getBytes());
     out.flush();
   }
+
 }
 
 
