@@ -14,7 +14,7 @@ public class Main {
     // добавление handler'ов (обработчиков)
     server.addHandler("GET", "/messages", (request, responseStream) -> {
       try {
-        server.responseWithoutContent(responseStream, "404", "Not Found");
+        server.responseWithoutContent(responseStream, "200", "OK");
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
@@ -23,6 +23,7 @@ public class Main {
     server.addHandler("POST", "/messages", (request, responseStream) -> server.responseWithoutContent(responseStream, "503", "Service Unavailable"));
 
     server.addHandler("GET", "/", ((request, outputStream) -> server.defaultHandler(outputStream, "index.html")));
+
 
     // Start
     server.start();

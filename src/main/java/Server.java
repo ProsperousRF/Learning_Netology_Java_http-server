@@ -3,6 +3,7 @@ import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
@@ -63,20 +64,20 @@ public class Server {
 
       // Get PATH, HANDLER Map
       Map<String, Handler> handlerMap = handlers.get(request.getMethod());
-      String requestPath = request.getPath();
+      String requestPath = request.getPath().split("\\?")[0];
       if (handlerMap.containsKey(requestPath)) {
         Handler handler = handlerMap.get(requestPath);
         handler.handle(request, out);
       } else {  // Defaults
         // Resource not found
-        if (!validPaths.contains(request.getPath())) {
+        if (!validPaths.contains(requestPath)) {
           responseWithoutContent(out, "404", "Not Found");
         } else {
-          defaultHandler(out, request.getPath());
+          defaultHandler(out, requestPath);
         }
       }
 
-    } catch (IOException e) {
+    } catch (IOException | URISyntaxException e) {
       throw new RuntimeException(e);
     }
   }
@@ -86,7 +87,7 @@ public class Server {
     final var mimeType = Files.probeContentType(filePath);
 
     // special case for classic
-    if (path.equals("/classic.html")) {
+    if (path.startsWith("/classic.html")) {
       final var template = Files.readString(filePath);
       final var content = template.replace(
               "{time}",

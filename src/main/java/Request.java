@@ -1,7 +1,14 @@
+import org.apache.http.NameValuePair;
+import org.apache.http.client.utils.URLEncodedUtils;
+
 import java.io.BufferedInputStream;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Represents HTTP request received from a server.
@@ -18,6 +25,7 @@ public class Request {
 
   public static final String GET = "GET";
   public static final String POST = "POST";
+  private List<NameValuePair> params;
 
 
   public Request(String requestMethod, String requestPath) {
@@ -26,7 +34,7 @@ public class Request {
     headers = null;
   }
 
-  public Request(String method, String path, List<String> headers) {
+  public Request(String method, String path, List<String> headers, List<NameValuePair> params) {
     this.method = method;
     this.path = path;
     this.headers = headers;
@@ -40,7 +48,7 @@ public class Request {
     return path;
   }
 
-  static Request createRequest(BufferedInputStream in) throws IOException {
+  static Request createRequest(BufferedInputStream in) throws IOException, URISyntaxException {
     final List<String> allowedMethods = List.of(GET, POST);
 
     final var limit = 4096;
@@ -65,10 +73,10 @@ public class Request {
     if (!allowedMethods.contains(method)) {
       return null;
     }
-    System.out.println(method);
+    System.out.println("METHOD: " + method);
 
     final var path = requestLine[1];
-    System.out.println(path);
+    System.out.println("PATH: " + path);
 
     // ищем заголовки
     final var headersDelimiter = new byte[]{'\r', '\n', '\r', '\n'};
@@ -85,10 +93,12 @@ public class Request {
 
     final var headersBytes = in.readNBytes(headersEnd - headersStart);
     List<String> headers = Arrays.asList(new String(headersBytes).split("\r\n"));
-    System.out.println(headers);
+//    System.out.println(headers);
 
+    List<NameValuePair> params = URLEncodedUtils.parse(new URI(path), StandardCharsets.UTF_8);
+    System.out.println(params);
 
-    return new Request(method, path, headers);
+    return new Request(method, path, headers, params);
   }
 
   // from Google guava with modifications
@@ -104,4 +114,14 @@ public class Request {
     }
     return -1;
   }
+
+  public List<NameValuePair> getQueryParam(String name) {
+    return params.stream().filter(p -> name.equals(p.getName())).collect(Collectors.toList());
+  }
+
+  public List<NameValuePair> getQueryParams() {
+    return params;
+  }
+
+
 }
