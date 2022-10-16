@@ -18,7 +18,7 @@ import java.util.concurrent.Executors;
  * simple http Server
  *
  * @author Stanislav Rakitov
- * @version 1.2
+ * @version 1.2.1
  */
 public class Server {
 
@@ -55,12 +55,15 @@ public class Server {
     ) {
 
       Request request = Request.createRequest(in);
-
       // Check for bad requests and drop connection
       if (request == null || !handlers.containsKey(request.getMethod())) {
         responseWithoutContent(out, "400", "Bad Request");
         return;
+      } else {
+        // Print out debug info for request
+        printRequestDebug(request);
       }
+
 
       // Get PATH, HANDLER Map
       Map<String, Handler> handlerMap = handlers.get(request.getMethod());
@@ -80,6 +83,27 @@ public class Server {
     } catch (IOException | URISyntaxException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  /**
+   * Printout debug information for Request object
+   *
+   * @param request Request to printout
+   */
+  private static void printRequestDebug(Request request) {
+    System.out.println("Request debug information: ");
+    System.out.println("METHOD" + request.getMethod());
+    System.out.println("PATH" + request.getPath());
+    System.out.println("HEADERS" + request.getHeaders());
+    System.out.println("Query Params:");
+    for (var para : request.getQueryParams()) {
+      System.out.println(para.getName() + " = " + para.getValue());
+    }
+
+    System.out.println("Test for dumb param name:");
+    System.out.println(request.getQueryParam("YetAnotherDumb").getName());
+    System.out.println("Test for dumb param name-value:");
+    System.out.println(request.getQueryParam("testDebugInfo").getValue());
   }
 
   void defaultHandler(BufferedOutputStream out, String path) throws IOException {
