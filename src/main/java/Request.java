@@ -8,13 +8,12 @@ import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Represents HTTP request received from a server.
  *
  * @author Stanislav Rakitov
- * @version 1.2
+ * @version 1.2.1
  */
 public class Request {
 
@@ -38,6 +37,7 @@ public class Request {
     this.method = method;
     this.path = path;
     this.headers = headers;
+    this.params = params;
   }
 
   public String getMethod() {
@@ -73,10 +73,8 @@ public class Request {
     if (!allowedMethods.contains(method)) {
       return null;
     }
-    System.out.println("METHOD: " + method);
 
     final var path = requestLine[1];
-    System.out.println("PATH: " + path);
 
     // ищем заголовки
     final var headersDelimiter = new byte[]{'\r', '\n', '\r', '\n'};
@@ -93,10 +91,8 @@ public class Request {
 
     final var headersBytes = in.readNBytes(headersEnd - headersStart);
     List<String> headers = Arrays.asList(new String(headersBytes).split("\r\n"));
-//    System.out.println(headers);
 
     List<NameValuePair> params = URLEncodedUtils.parse(new URI(path), StandardCharsets.UTF_8);
-    System.out.println(params);
 
     return new Request(method, path, headers, params);
   }
@@ -115,13 +111,27 @@ public class Request {
     return -1;
   }
 
-  public List<NameValuePair> getQueryParam(String name) {
-    return params.stream().filter(p -> name.equals(p.getName())).collect(Collectors.toList());
+  public NameValuePair getQueryParam(String name) {
+    return getQueryParams().stream()
+            .filter(param -> param.getName().equalsIgnoreCase(name))
+            .findFirst().orElse(new NameValuePair() {
+              @Override
+              public String getName() {
+                return name;
+              }
+
+              @Override
+              public String getValue() {
+                return "";
+              }
+            });
   }
 
   public List<NameValuePair> getQueryParams() {
     return params;
   }
 
-
+  public List<String> getHeaders() {
+    return headers;
+  }
 }
