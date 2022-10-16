@@ -90,11 +90,11 @@ public class Server {
    *
    * @param request Request to printout
    */
-  private static void printRequestDebug(Request request) {
+  private void printRequestDebug(Request request) {
     System.out.println("Request debug information: ");
-    System.out.println("METHOD" + request.getMethod());
-    System.out.println("PATH" + request.getPath());
-    System.out.println("HEADERS" + request.getHeaders());
+    System.out.println("METHOD: " + request.getMethod());
+    System.out.println("PATH: " + request.getPath());
+    System.out.println("HEADERS: " + request.getHeaders());
     System.out.println("Query Params:");
     for (var para : request.getQueryParams()) {
       System.out.println(para.getName() + " = " + para.getValue());
