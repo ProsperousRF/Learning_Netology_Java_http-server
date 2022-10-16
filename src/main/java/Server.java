@@ -1,9 +1,9 @@
+import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
@@ -14,6 +14,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+/**
+ * simple http Server
+ *
+ * @author Stanislav Rakitov
+ * @version 1.2.1
+ */
 public class Server {
 
   private final int SERVER_SOCKET;
@@ -44,48 +50,60 @@ public class Server {
   }
 
   private void proceedConnection(Socket socket) {
-    try (final var in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-         final var out = new BufferedOutputStream(socket.getOutputStream())) {
+    try (final var in = new BufferedInputStream(socket.getInputStream());
+         final var out = new BufferedOutputStream(socket.getOutputStream())
+    ) {
 
-      // read only request line for simplicity
-      // must be in form GET /path HTTP/1.1
-      final var requestLine = in.readLine();
-      final var parts = requestLine.split(" ");
-
-      if (parts.length != 3) {
-        // just close socket
-        socket.close();
-        return;
-      }
-
-      String method = parts[0];
-      final var path = parts[1];
-      Request request = createRequest(method, path);
-
+      Request request = Request.createRequest(in);
       // Check for bad requests and drop connection
       if (request == null || !handlers.containsKey(request.getMethod())) {
         responseWithoutContent(out, "400", "Bad Request");
         return;
+      } else {
+        // Print out debug info for request
+        printRequestDebug(request);
       }
+
 
       // Get PATH, HANDLER Map
       Map<String, Handler> handlerMap = handlers.get(request.getMethod());
-      String requestPath = request.getPath();
+      String requestPath = request.getPath().split("\\?")[0];
       if (handlerMap.containsKey(requestPath)) {
         Handler handler = handlerMap.get(requestPath);
         handler.handle(request, out);
       } else {  // Defaults
         // Resource not found
-        if (!validPaths.contains(request.getPath())) {
+        if (!validPaths.contains(requestPath)) {
           responseWithoutContent(out, "404", "Not Found");
         } else {
-          defaultHandler(out, path);
+          defaultHandler(out, requestPath);
         }
       }
 
-    } catch (IOException e) {
+    } catch (IOException | URISyntaxException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  /**
+   * Printout debug information for Request object
+   *
+   * @param request Request to printout
+   */
+  private void printRequestDebug(Request request) {
+    System.out.println("Request debug information: ");
+    System.out.println("METHOD: " + request.getMethod());
+    System.out.println("PATH: " + request.getPath());
+    System.out.println("HEADERS: " + request.getHeaders());
+    System.out.println("Query Params:");
+    for (var para : request.getQueryParams()) {
+      System.out.println(para.getName() + " = " + para.getValue());
+    }
+
+    System.out.println("Test for dumb param name:");
+    System.out.println(request.getQueryParam("YetAnotherDumb").getName());
+    System.out.println("Test for dumb param name-value:");
+    System.out.println(request.getQueryParam("testDebugInfo").getValue());
   }
 
   void defaultHandler(BufferedOutputStream out, String path) throws IOException {
@@ -93,7 +111,7 @@ public class Server {
     final var mimeType = Files.probeContentType(filePath);
 
     // special case for classic
-    if (path.equals("/classic.html")) {
+    if (path.startsWith("/classic.html")) {
       final var template = Files.readString(filePath);
       final var content = template.replace(
               "{time}",
@@ -123,16 +141,6 @@ public class Server {
     out.flush();
   }
 
-  private Request createRequest(String method, String path) {
-    // TODO: More checks for bad fields
-    if (method != null && !method.isBlank()) {
-      return new Request(method, path);
-    } else {
-      return null;
-    }
-
-  }
-
   void addHandler(String method, String path, Handler handler) {
     if (!handlers.containsKey(method)) {
       handlers.put(method, new HashMap<>());
@@ -149,6 +157,7 @@ public class Server {
               ).getBytes());
     out.flush();
   }
+
 }
 
 
